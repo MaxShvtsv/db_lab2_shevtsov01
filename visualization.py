@@ -11,20 +11,20 @@ host = 'localhost'
 port = '5432'
 
 query_1 = '''
-SELECT id, mobile_wt
-FROM dimensions
-WHERE mobile_wt > 150;
+SELECT phone_id, label, int_memory
+FROM phones
 '''
 query_2 = '''
-SELECT id, four_g
-FROM connections
-ORDER BY four_g DESC
+SELECT customers.country, COUNT(*) AS phone_count
+FROM customers, phones
+WHERE customers.phone_id = phones.phone_id
+GROUP BY customers.country
 '''
 
 query_3 = '''
-SELECT id, battery_power, clock_Speed
-FROM features
-WHERE battery_power > 1400
+SELECT phones.phone_id, phones.label, customers.cust_name, customers.age
+FROM phones, customers
+WHERE customers.phone_id = phones.phone_id AND customers.age > 20
 '''
 
 conn = psycopg2.connect(user=username, password=password, dbname=database, host=host, port=port)
@@ -38,34 +38,32 @@ with conn:
     print('1.  \n')
 
     cur.execute(query_1)
-    df_1 = pd.DataFrame(cur.fetchall(), columns=['id', 'mobile_wt'])
+    df_1 = pd.DataFrame(cur.fetchall(), columns=['phone_id', 'label', 'int_memory'])
     print(df_1)
 
     print('2.  \n')
 
     cur.execute(query_2)
-    df_2 = pd.DataFrame(cur.fetchall(), columns=['id', 'four_g'])
+    df_2 = pd.DataFrame(cur.fetchall(), columns=['country', 'phone_count'])
     print(df_2)
 
     print('3.  \n')
 
     cur.execute(query_3)
-    df_3 = pd.DataFrame(cur.fetchall(), columns=['id', 'battery_power', 'clock_Speed'])
+    df_3 = pd.DataFrame(cur.fetchall(), columns=['phone_id', 'label', 'cust_name', 'age'])
+
     print(df_3)
 
     # Visualization
     fig, axs = plt.subplots(3, figsize=(10, 10))
 
     # Query 1 - Histogram
-    axs[0].bar(df_1['id'], df_1['mobile_wt'])
+    axs[0].bar(df_1['label'], df_1['int_memory'])
 
-    axs[0].set_xticks(list(range(df_1['id'].min(), df_1['id'].max() + 1)))
-    axs[0].set_yticks(list(range(0, df_1['mobile_wt'].max() + 10, 5)))
+    axs[0].set_yticks(list(range(0, df_1['int_memory'].max() + 10, 5)))
 
-    axs[0].set_ylim(df_1['mobile_wt'].min() - 10, df_1['mobile_wt'].max() + 10)
-
-    axs[0].set_xlabel('id')
-    axs[0].set_ylabel('Mobile Weight')
+    axs[0].set_xlabel('Label')
+    axs[0].set_ylabel('Int Memory')
     axs[0].set_title('Query 1')
 
     axs[0].grid(axis='y')
@@ -75,33 +73,26 @@ with conn:
                          chartBox.width * 0.6,
                          chartBox.height])
 
-    # Query 2 - Pie Diagram
+    # # Query 2 - Pie Diagram
 
-    labels = ['Have 4G', 'Don\'t have 4G']
-    sizes = df_2['four_g'].value_counts().values
+    labels = df_2['country']
+    sizes = df_2['phone_count']
 
     axs[1].pie(sizes, labels=labels, autopct='%1.1f%%')
 
     axs[1].set_title('Query 2')
 
     chartBox = axs[1].get_position()
-    axs[1].set_position([chartBox.x0 + 0.2, chartBox.y0,
+    axs[1].set_position([chartBox.x0 + 0.15, chartBox.y0,
                          chartBox.width * 2,
                          chartBox.height * 2])
 
     # Query 3 - Scatter
 
-    axs[2].scatter(df_3['battery_power'], df_3['clock_Speed'])
+    axs[2].scatter(df_3['cust_name'] + '\\' + df_3['label'], df_3['age'])
 
-    def my_range(x, y, jump):
-        while x < y:
-            yield x
-            x += jump
-
-    axs[2].set_yticks(list(my_range(int(df_3['clock_Speed'].min()), int(df_3['clock_Speed'].max() + 2), 0.5)))
-
-    axs[2].set_xlabel('Battery Power')
-    axs[2].set_ylabel('Clock Speed')
+    axs[2].set_xlabel('Customer Name/Phone Label')
+    axs[2].set_ylabel('Age')
     axs[2].set_title('Query 3')
 
     axs[2].grid()
